@@ -160,6 +160,27 @@ class SoftwareData:
                 timestamp=_dt("2026-08-01T09:05:00Z"),
                 properties={"kind": "InfrastructureEvent"},
             ),
+            # Historical configuration states used by M5 state-at-time queries.
+            GraphNode(
+                "config-A",
+                "Configuration",
+                "payments timeout configuration A",
+                valid_from=_dt("2026-08-01T08:00:00Z"),
+                valid_until=_dt("2026-08-01T09:10:00Z"),
+                properties={
+                    "kind": "Configuration",
+                    "value": "2s",
+                    "state": "historical",
+                },
+            ),
+            GraphNode(
+                "config-B",
+                "Configuration",
+                "payments timeout configuration B",
+                valid_from=_dt("2026-08-01T09:10:00Z"),
+                valid_until=_dt("2026-08-01T10:00:00Z"),
+                properties={"kind": "Configuration", "value": "5s", "state": "active"},
+            ),
             # Evidence/source records. Competing hypotheses intentionally lack
             # dedicated source records so later milestones can demonstrate gaps.
             GraphNode(
@@ -173,7 +194,7 @@ class SoftwareData:
                     "span": "commit abc123",
                     "status": "OBSERVED",
                 },
-                observed_at=_dt("2026-08-01T09:00:00Z"),
+                observed_at=_dt("2026-08-01T09:05:00Z"),
             ),
             GraphNode(
                 "source-dependency-001",

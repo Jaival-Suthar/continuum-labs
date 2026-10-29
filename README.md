@@ -162,3 +162,48 @@ uv run pytest -m "not integration"
 
 M4 still does not implement temporal path filtering, hypothesis competition,
 agentic investigation, or LLM synthesis. Those remain later milestones.
+
+
+## M5 — Temporal investigation
+
+M5 makes time a real graph constraint.
+
+Temporal metadata has explicit semantics:
+
+- `timestamp` — event/change/relationship occurrence time
+- `valid_from` / `valid_until` — state validity interval
+- `observed_at` — source observation/reporting time
+
+The temporal layer provides deterministic `before`, `after`, `between`,
+`preceded_by`, and `valid_at` operations plus FalkorDB-backed ordering,
+state-at-time queries, and temporal path filtering.
+
+A path whose known event timestamps reverse order is rejected. A path with no
+usable temporal metadata is `UNKNOWN`, not silently valid. Event time is never
+replaced by source observation time.
+
+Run the M5 gate:
+
+```bash
+uv run python scripts/m5_check.py
+```
+
+Run the complete verification suite:
+
+```bash
+uv run pytest
+uv run ruff check .
+```
+
+The M5 scenario proves:
+
+```text
+09:30 incident
+   ↑
+10:00 supposed cause
+
+=> REJECTED
+```
+
+M5 does not implement causal inference or LLM reasoning. It establishes
+temporal admissibility for M6's deterministic investigation engine.
