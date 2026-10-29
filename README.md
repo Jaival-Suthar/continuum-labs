@@ -111,3 +111,54 @@ uv run python scripts/m3_check.py
 M3 deliberately does not implement investigator reasoning. It creates the
 controlled world required for M6-M11, where traversal, temporal validation,
 evidence validation, and hypothesis competition are implemented.
+
+
+## M4 — Provenance
+
+M4 makes graph relationships auditable before the investigation engine is
+built.
+
+Relationships now have stable identity and explicit provenance fields:
+
+- `edge_id`
+- `evidence_status`
+- `evidence_source_ids`
+- temporal metadata
+- `provenance_version`
+
+Source records expose:
+
+- `record`
+- `span`
+- `observed_at`
+- `status`
+
+The provenance resolver returns the relationship together with its resolved
+source evidence. Missing evidence is represented explicitly as
+`evidence_status=UNKNOWN`; the system does not manufacture support.
+
+Run the M4 gate against FalkorDB:
+
+```bash
+uv run python scripts/m4_check.py
+```
+
+Expected:
+
+```text
+M4 provenance check
+relationship_identity=PASS edges=17
+source_records=PASS sources=5
+primary_path_provenance=PASS
+missing_evidence_explicit=PASS
+M4_STATUS=PASS
+```
+
+Run the full non-integration suite:
+
+```bash
+uv run pytest -m "not integration"
+```
+
+M4 still does not implement temporal path filtering, hypothesis competition,
+agentic investigation, or LLM synthesis. Those remain later milestones.

@@ -57,11 +57,12 @@ class GraphTraversal:
         return result.result_set
 
     def relationship_evidence(self, source_id: str, target_id: str) -> list[list[Any]]:
+        """Return relationship properties and the source IDs recorded on each edge."""
         result = self.client.read(
             """
             MATCH (source {id:$source_id})-[r]-(target {id:$target_id})
-            OPTIONAL MATCH (source)-[:SUPPORTED_BY]->(e:Source)
-            RETURN type(r), properties(r), collect(e.id)
+            RETURN type(r), properties(r), coalesce(r.evidence_source_ids, [])
+            ORDER BY r.edge_id
             """,
             {"source_id": source_id, "target_id": target_id},
         )

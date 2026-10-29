@@ -18,4 +18,7 @@ def test_relationship_provenance_is_retrievable():
     assert relationship.source_id == "commit-001"
     assert relationship.relationship == "CHANGED"
     assert relationship.target_id == "dependency-gateway-sdk"
-    assert relationship.evidence_source_ids == ("source-commit",)
+    assert relationship.evidence_source_ids == ("source-commit-001",)
+    assert relationship.evidence_status == "OBSERVED"
+    assert relationship.evidence[0].record == "abc123"
+    assert relationship.evidence[0].span == "commit abc123"

@@ -170,7 +170,23 @@ class SoftwareData:
                     "kind": "Source",
                     "system": "git",
                     "record": "abc123",
+                    "span": "commit abc123",
+                    "status": "OBSERVED",
                 },
+                observed_at=_dt("2026-08-01T09:00:00Z"),
+            ),
+            GraphNode(
+                "source-dependency-001",
+                "Source",
+                "dependency relationship record gateway-sdk",
+                properties={
+                    "kind": "Source",
+                    "system": "dependency-manifest",
+                    "record": "payments-lockfile",
+                    "span": "gateway-sdk dependency entry",
+                    "status": "OBSERVED",
+                },
+                observed_at=_dt("2026-08-01T09:00:00Z"),
             ),
             GraphNode(
                 "source-deployment-001",
@@ -180,7 +196,10 @@ class SoftwareData:
                     "kind": "Source",
                     "system": "deployment",
                     "record": "deploy-001",
+                    "span": "deployment event deploy-001",
+                    "status": "OBSERVED",
                 },
+                observed_at=_dt("2026-08-01T09:20:00Z"),
             ),
             GraphNode(
                 "source-metric-001",
@@ -190,7 +209,10 @@ class SoftwareData:
                     "kind": "Source",
                     "system": "observability",
                     "record": "metric-001",
+                    "span": "p99 latency observation at 09:45Z",
+                    "status": "OBSERVED",
                 },
+                observed_at=_dt("2026-08-01T09:45:00Z"),
             ),
             GraphNode(
                 "source-incident-001",
@@ -200,7 +222,10 @@ class SoftwareData:
                     "kind": "Source",
                     "system": "incident",
                     "record": "INC-001",
+                    "span": "incident record INC-001",
+                    "status": "OBSERVED",
                 },
+                observed_at=_dt("2026-08-01T10:00:00Z"),
             ),
         )
 
@@ -221,6 +246,7 @@ class SoftwareData:
                 "DEPENDS_ON",
                 "service-payments",
                 timestamp=_dt("2026-08-01T09:00:00Z"),
+                evidence_source_ids=("source-dependency-001",),
                 properties={"role": "dependency_propagation"},
             ),
             GraphEdge(
@@ -308,6 +334,9 @@ class SoftwareData:
             ),
             # Explicit source relationships for the evidence-backed path.
             GraphEdge("commit-001", "SUPPORTED_BY", "source-commit-001"),
+            GraphEdge(
+                "dependency-gateway-sdk", "SUPPORTED_BY", "source-dependency-001"
+            ),
             GraphEdge("deployment-001", "SUPPORTED_BY", "source-deployment-001"),
             GraphEdge("metric-001", "SUPPORTED_BY", "source-metric-001"),
             GraphEdge("incident-001", "SUPPORTED_BY", "source-incident-001"),

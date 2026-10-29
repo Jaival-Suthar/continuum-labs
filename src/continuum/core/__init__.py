@@ -1,5 +1,6 @@
 from continuum.core.models import (
     Evidence,
+    EvidenceStatus,
     GraphEdge,
     GraphNode,
     GraphRelationship,
@@ -18,6 +19,7 @@ __all__ = [
     "CORE_LABELS",
     "CORE_RELATIONSHIPS",
     "Evidence",
+    "EvidenceStatus",
     "GraphEdge",
     "GraphNode",
     "GraphRelationship",

@@ -59,20 +59,25 @@ class WorldLoader:
 
     def _load_edge(self, world: World, edge: GraphEdge) -> None:
         world.ontology.validate_relationship(edge.relationship)
+
         properties: dict[str, Any] = dict(edge.properties)
+        properties.pop("edge_id", None)
         properties.update(self._temporal_properties(edge))
-        if edge.evidence_source_ids:
-            properties["evidence_source_ids"] = list(edge.evidence_source_ids)
+        properties["edge_id"] = edge.stable_id
+        properties["evidence_status"] = edge.evidence_status
+        properties["evidence_source_ids"] = list(edge.evidence_source_ids)
+        properties["provenance_version"] = 1
 
         self.client.query(
             f"""
             MATCH (source {{id: $source_id}}), (target {{id: $target_id}})
-            MERGE (source)-[r:{edge.relationship}]->(target)
+            MERGE (source)-[r:{edge.relationship} {{edge_id: $edge_id}}]->(target)
             SET r += $properties
             """,
             {
                 "source_id": edge.source_id,
                 "target_id": edge.target_id,
+                "edge_id": edge.stable_id,
                 "properties": properties,
             },
         )

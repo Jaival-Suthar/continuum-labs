@@ -70,4 +70,4 @@ def test_relationship_evidence(traversal):
     assert rows
     assert rows[0][0] == "CHANGED"
     assert rows[0][1]["timestamp"] == "2026-08-01T09:00:00Z"
-    assert rows[0][2] == ["source-commit"]
+    assert rows[0][2] == ["source-commit-001"]

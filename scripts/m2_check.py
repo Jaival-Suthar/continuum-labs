@@ -5,6 +5,14 @@ import inspect
 import sys
 from pathlib import Path
 
+from continuum.cli.output import (
+    CheckResult,
+    checks,
+    failure,
+    header,
+    success,
+)
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -197,7 +205,7 @@ def check_investigator_is_domain_independent() -> None:
 
 
 def main() -> int:
-    print("M2 universal core check")
+    header("M2", "Universal core verification")
 
     try:
         check_core_ontology()
@@ -210,17 +218,30 @@ def main() -> int:
         check_investigator_is_domain_independent()
 
     except (AssertionError, ValueError, TypeError, SyntaxError) as exc:
-        print(f"FAIL: {exc}")
+        failure(str(exc))
         return 1
 
-    print(f"software_world=PASS nodes={software_nodes} edges={software_edges}")
-    print(f"supply_chain_world=PASS nodes={supply_nodes} edges={supply_edges}")
-    print("universal_core=PASS")
-    print("same_world_contract=PASS")
-    print("same_investigator_contract=PASS")
-    print("domain_specific_investigator_logic=PASS")
-    print("M2_STATUS=PASS")
+    checks(
+        [
+            CheckResult(
+                "Software world",
+                f"PASS · nodes={software_nodes} edges={software_edges}",
+            ),
+            CheckResult(
+                "Supply-chain world",
+                f"PASS · nodes={supply_nodes} edges={supply_edges}",
+            ),
+            CheckResult("Universal core", "PASS"),
+            CheckResult("Same world contract", "PASS"),
+            CheckResult("Same investigator contract", "PASS"),
+            CheckResult(
+                "Domain-independent investigator",
+                "PASS",
+            ),
+        ]
+    )
 
+    success("M2")
     return 0
 
 

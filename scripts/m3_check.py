@@ -7,6 +7,13 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from continuum.cli.output import (
+    CheckResult,
+    checks,
+    failure,
+    header,
+    success,
+)
 from continuum.graph import GraphClient, WorldLoader
 from domains.software.world import SOFTWARE_WORLD
 
@@ -154,7 +161,7 @@ def check_missing_evidence(client: GraphClient) -> None:
 
 
 def main() -> int:
-    print("M3 software world check")
+    header("M3", "Software world verification")
 
     client = GraphClient()
 
@@ -169,16 +176,24 @@ def main() -> int:
         check_missing_evidence(client)
 
     except (AssertionError, ValueError, TypeError) as exc:
-        print(f"FAIL: {exc}")
+        failure(str(exc))
         return 1
 
-    print("software_world=PASS")
-    print("ground_truth_multi_hop_path=PASS hops=5")
-    print("multiple_hypotheses=PASS")
-    print("temporal_conflict=PASS")
-    print("distractors=PASS")
-    print("missing_evidence=PASS")
-    print("M3_STATUS=PASS")
+    checks(
+        [
+            CheckResult("Software world", "PASS"),
+            CheckResult(
+                "Ground-truth multi-hop path",
+                "PASS · hops=5",
+            ),
+            CheckResult("Multiple hypotheses", "PASS"),
+            CheckResult("Temporal conflict", "PASS"),
+            CheckResult("Distractors", "PASS"),
+            CheckResult("Missing evidence", "PASS"),
+        ]
+    )
+
+    success("M3")
     return 0
 
 
