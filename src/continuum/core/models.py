@@ -18,6 +18,14 @@ class Evidence:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class GraphRelationship:
+    source_id: str
+    relationship: str
+    target_id: str
+    evidence_source_ids: tuple[str, ...] = ()
+
+
 @dataclass
 class InvestigationResult:
     question: str
