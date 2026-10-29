@@ -82,3 +82,32 @@ Validate both domain packages against FalkorDB:
 uv run python scripts/m2_check.py
 uv run pytest -m integration
 ```
+
+
+## M3 — Software investigation world
+
+M3 replaces the minimal software example with a controlled investigation
+scenario designed to make graph reasoning non-trivial.
+
+The software world contains:
+
+- a six-node ground-truth path from commit to incident,
+- a temporally valid infrastructure alternative with missing evidence,
+- a configuration alternative that occurs after the incident,
+- unrelated graph distractors,
+- source records for the evidence-backed path,
+- temporal metadata on relevant events and relationships.
+
+The intended question is:
+
+> Why did `incident-001` happen?
+
+Run the M3 gate against FalkorDB:
+
+```bash
+uv run python scripts/m3_check.py
+```
+
+M3 deliberately does not implement investigator reasoning. It creates the
+controlled world required for M6-M11, where traversal, temporal validation,
+evidence validation, and hypothesis competition are implemented.

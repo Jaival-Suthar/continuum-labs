@@ -10,5 +10,6 @@ SOFTWARE_ONTOLOGY = Ontology(
         "Configuration",
         "Metric",
         "Incident",
+        "InfrastructureEvent",
     ),
 )
