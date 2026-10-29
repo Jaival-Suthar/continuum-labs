@@ -15,15 +15,8 @@ class EvidenceStatus:
     SUPPORTED_INFERENCE: ClassVar[str] = "SUPPORTED_INFERENCE"
     CONTRADICTED: ClassVar[str] = "CONTRADICTED"
     UNKNOWN: ClassVar[str] = "UNKNOWN"
-
     ALL: ClassVar[frozenset[str]] = frozenset(
-        {
-            OBSERVED,
-            DERIVED,
-            SUPPORTED_INFERENCE,
-            CONTRADICTED,
-            UNKNOWN,
-        }
+        {OBSERVED, DERIVED, SUPPORTED_INFERENCE, CONTRADICTED, UNKNOWN}
     )
 
 
@@ -93,17 +86,13 @@ class GraphEdge:
             raise ValueError("GraphEdge.edge_id must not be empty")
         if len(set(self.evidence_source_ids)) != len(self.evidence_source_ids):
             raise ValueError("GraphEdge.evidence_source_ids must be unique")
-
-        status = self.evidence_status
-        if status not in EvidenceStatus.ALL:
-            raise ValueError(f"Unsupported evidence status: {status}")
+        if self.evidence_status not in EvidenceStatus.ALL:
+            raise ValueError(f"Unsupported evidence status: {self.evidence_status}")
 
     @property
     def stable_id(self) -> str:
-        """Return an explicit ID or a deterministic ID derived from edge content."""
         if self.edge_id:
             return self.edge_id
-
         canonical = _canonical_edge_payload(
             self.source_id,
             self.relationship,
@@ -185,12 +174,64 @@ class GraphRelationship:
     evidence: tuple[Evidence, ...] = ()
 
 
+@dataclass(frozen=True)
+class InvestigationPath:
+    """One graph-derived candidate explanation, enriched deterministically."""
+
+    node_ids: tuple[str, ...]
+    relationships: tuple[str, ...]
+    edge_ids: tuple[str | None, ...]
+    temporal_status: str
+    temporal_reason: str
+    evidence: tuple[Evidence, ...] = ()
+    supporting_relationship_count: int = 0
+    conflicting_relationship_count: int = 0
+    missing_evidence_count: int = 0
+    direction: str = "forward"
+    node_records: tuple[dict[str, Any], ...] = ()
+    edge_records: tuple[dict[str, Any], ...] = ()
+
+    @property
+    def hop_count(self) -> int:
+        return len(self.relationships)
+
+    @property
+    def temporally_valid(self) -> bool | None:
+        return {"VALID": True, "INVALID": False, "UNKNOWN": None}.get(
+            self.temporal_status
+        )
+
+
+@dataclass(frozen=True)
+class PathRanking:
+    """Transparent deterministic ranking signals; no invented confidence."""
+
+    path: InvestigationPath
+    temporal_validity: int
+    path_length: int
+    evidence_count: int
+    supporting_relationship_count: int
+    conflicting_relationship_count: int
+    missing_evidence_count: int
+    rank_key: tuple[int, int, int, int, int, int]
+
+
 @dataclass
 class InvestigationResult:
+    """Complete deterministic investigation output before any LLM synthesis."""
+
     question: str
-    paths: list[list[str]] = field(default_factory=list)
+    target: str | None = None
+    candidate_paths: list[InvestigationPath] = field(default_factory=list)
     evidence: list[Evidence] = field(default_factory=list)
+    temporal_checks: list[str] = field(default_factory=list)
     contradictions: list[str] = field(default_factory=list)
     gaps: list[str] = field(default_factory=list)
-    verdict: str | None = None
+    ranked_paths: list[PathRanking] = field(default_factory=list)
     trace: list[str] = field(default_factory=list)
+    verdict: str | None = None
+
+    @property
+    def paths(self) -> list[list[str]]:
+        """Compatibility view retained from the pre-M6 result model."""
+        return [list(path.node_ids) for path in self.candidate_paths]

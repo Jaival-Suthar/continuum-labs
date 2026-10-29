@@ -4,7 +4,9 @@ from continuum.core.models import (
     GraphEdge,
     GraphNode,
     GraphRelationship,
+    InvestigationPath,
     InvestigationResult,
+    PathRanking,
     Source,
 )
 from continuum.core.ontology import (
@@ -23,8 +25,10 @@ __all__ = [
     "GraphEdge",
     "GraphNode",
     "GraphRelationship",
+    "InvestigationPath",
     "InvestigationResult",
     "Ontology",
+    "PathRanking",
     "Source",
     "TemporalModel",
     "World",
