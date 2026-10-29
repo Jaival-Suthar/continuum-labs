@@ -1,49 +1,47 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
-CORE_LABELS = (
-    "Entity",
-    "Event",
-    "Change",
-    "Observation",
-    "Outcome",
-    "Source",
-)
-
-CORE_RELATIONSHIPS = (
-    "AFFECTS",
-    "DEPENDS_ON",
-    "CHANGED",
-    "PRECEDED",
-    "RESULTED_IN",
-    "OBSERVED_AS",
-    "SUPPORTED_BY",
-    "MENTIONED_IN",
-    "OWNED_BY",
+from continuum.core.ontology import (
+    CORE_LABELS,
+    CORE_RELATIONSHIPS,
+    Ontology,
 )
 
 
 @dataclass(frozen=True)
 class GraphSchema:
-    labels: tuple[str, ...] = CORE_LABELS
-    relationships: tuple[str, ...] = CORE_RELATIONSHIPS
+    """Universal graph schema backed by a world ontology."""
+
+    ontology: Ontology = field(default_factory=lambda: Ontology(name="continuum-core"))
+
+    @property
+    def labels(self) -> tuple[str, ...]:
+        return self.ontology.all_labels
+
+    @property
+    def relationships(self) -> tuple[str, ...]:
+        return self.ontology.all_relationships
 
     def validate_relationship(self, relationship: str) -> None:
-        if relationship not in self.relationships:
-            raise ValueError(f"Unsupported core relationship: {relationship}")
+        self.ontology.validate_relationship(relationship)
 
     def validate_label(self, label: str) -> None:
-        if label not in self.labels:
-            raise ValueError(f"Unsupported core label: {label}")
+        self.ontology.validate_label(label)
 
-    def initialize(self, graph) -> None:
+    def initialize(self, graph: Any) -> None:
+        """Create id indexes for every label in the ontology when missing."""
+        result = graph.query("CALL db.indexes()")
         existing_indexes = {
             (row[0], tuple(row[1]))
-            for row in graph.query("CALL db.indexes()").result_set
-            if row[6] == "NODE"
+            for row in result.result_set
+            if len(row) > 6 and row[6] == "NODE"
         }
 
         for label in self.labels:
             if (label, ("id",)) not in existing_indexes:
                 graph.query(f"CREATE INDEX FOR (n:{label}) ON (n.id)")
+
+
+__all__ = ["CORE_LABELS", "CORE_RELATIONSHIPS", "GraphSchema"]
