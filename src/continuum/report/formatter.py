@@ -145,10 +145,7 @@ class ReportFormatter:
                     else source.observed_at
                 )
 
-                detail += (
-                    " — observed_at="
-                    + observed_at
-                )
+                detail += " — observed_at=" + observed_at
 
             lines.append(detail)
 

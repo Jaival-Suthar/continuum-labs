@@ -203,9 +203,7 @@ def run() -> int:
         assert "incident-001" in rendered
 
     except (AssertionError, OSError, RuntimeError, TypeError, ValueError) as exc:
-        failure(
-            f"{type(exc).__name__}: {exc}"
-        )
+        failure(f"{type(exc).__name__}: {exc}")
         raise
 
     info(

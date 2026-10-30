@@ -927,3 +927,23 @@ All checks passed!
 ### M11 Completion
 
 M11 is complete when an investigation can be rendered as a grounded report containing the question, supported explanation, evidence path, observed facts, derived relationships, supported inferences, contradictions, evidence gaps, sources, and investigation trace — while preserving the M6–M10 evidence trail and performing no new investigation.
+
+
+## M12 — Retrieval-only baseline
+
+See `M12_BASELINE.md` for the M12 control-group architecture and verification commands.
+
+M12 adds a retrieval-only pipeline over the same `World` data used by Continuum. It materializes nodes and relationships into retrieval documents, ranks them with deterministic TF-IDF cosine similarity, and can pass only the retrieved context to a real Ollama answer model. The baseline does not instantiate `GraphClient`, `Investigator`, FalkorDB traversal, evidence validation, temporal reasoning, hypothesis competition, or M11 reporting.
+
+Run the control-group gate without external services:
+
+```powershell
+uv run python scripts/m12_check.py --mode retrieval
+```
+
+Run the real LLM baseline when Ollama and the selected model are available:
+
+```powershell
+$env:CONTINUUM_LLM_MODEL="qwen3:8b"
+uv run python scripts/m12_check.py --mode ollama --model $env:CONTINUUM_LLM_MODEL
+```
