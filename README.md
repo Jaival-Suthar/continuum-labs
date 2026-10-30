@@ -947,3 +947,102 @@ Run the real LLM baseline when Ollama and the selected model are available:
 $env:CONTINUUM_LLM_MODEL="qwen3:8b"
 uv run python scripts/m12_check.py --mode ollama --model $env:CONTINUUM_LLM_MODEL
 ```
+
+## M13 — Controlled Evaluation
+
+M13 turns the M12 baseline into a controlled experiment. It defines 20
+software and 20 supply-chain benchmark cases with independently declared ground
+truth paths, distractors, evidence, temporal constraints, and expected answers.
+The cases are benchmark fixtures, not production observations.
+
+The same case data and question are supplied to:
+
+```text
+SAME CONTROLLED CASE
+        │
+   ┌────┴────┐
+   ▼         ▼
+ M12       CONTINUUM
+TF-IDF     FalkorDB
+   │         │
+   └────┬────┘
+        ▼
+     metrics
+```
+
+M13 measures:
+
+- exact path recovery plus node/edge precision and recall,
+- structured evidence coverage,
+- structured unsupported-claim rate,
+- deterministic temporal consistency,
+- actual FalkorDB investigation operations and exploration counts,
+- the domain-independent evaluation interface.
+
+No metric is hard-coded, no ground truth is generated from Continuum, and no
+LLM is used as a judge for evidence or timestamps.
+
+M13 is a controlled structural evaluation of retrieval-only versus graph
+investigation. The primary comparison evaluates what each method can recover
+from the same controlled case, rather than subjective natural-language answer
+quality.
+
+The M12 baseline also contains a real retrieval-to-Ollama LLM path, but that
+LLM path is not part of the 40-case M13 metric run. End-to-end experimentation
+will be performed later, comparing LLM + retrieval-only RAG against LLM +
+Continuum investigation using the same questions and controlled cases.
+
+### Run M13
+
+Start FalkorDB first:
+
+```powershell
+docker compose up -d
+```
+
+Run the complete 40-case controlled evaluation:
+
+```powershell
+uv run python scripts/m13_check.py
+```
+
+Run one domain:
+
+```powershell
+uv run python scripts/m13_check.py --domain software
+uv run python scripts/m13_check.py --domain supply-chain
+```
+
+Run one exact case:
+
+```powershell
+uv run python scripts/m13_check.py --case software-001
+```
+
+The runner writes:
+
+```text
+artifacts/m13/
+├── cases/
+│   ├── software/
+│   └── supply_chain/
+├── runs/
+│   ├── software/
+│   └── supply_chain/
+└── summary.json
+```
+
+The aggregate numbers printed by the check are calculated from the executed
+case results. M13 does not claim that graph investigation is universally
+superior; it measures the observed difference on this controlled benchmark.
+
+### M13 tests
+
+```powershell
+uv run pytest tests/test_m13_evaluation_unit.py -q
+uv run pytest -m "not integration" -q
+uv run ruff check .
+```
+
+The real M13 gate requires a reachable FalkorDB instance because Continuum's
+side of the experiment must perform actual graph operations.
