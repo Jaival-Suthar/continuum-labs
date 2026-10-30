@@ -527,3 +527,120 @@ M8 does not add:
 - autonomous remediation.
 
 Those remain outside the M8 boundary.
+
+## M9 — Evidence validator
+
+M9 adds the deterministic boundary that prevents an LLM-proposed relationship
+from being presented as an established fact without graph and evidence support.
+
+The LLM may propose a `Claim`; only `EvidenceValidator` assigns its evidentiary
+classification.
+
+The validation pipeline is fixed:
+
+```text
+Claim
+  ↓
+graph validation
+  ↓
+evidence lookup
+  ↓
+temporal check
+  ↓
+contradiction check
+  ↓
+evidence classification
+```
+
+The validator returns one of the V1 evidence states:
+
+- `OBSERVED`
+- `DERIVED`
+- `SUPPORTED_INFERENCE`
+- `CONTRADICTED`
+- `UNKNOWN`
+
+`UNKNOWN` is explicit and is rendered as `Insufficient evidence.` rather than
+being converted to a boolean truth value or an invented confidence score.
+
+M9 composes the existing M4 provenance resolver, M5 temporal machinery, and
+M6 `find_conflicting_evidence()` primitive. It does not add reporting,
+hypothesis competition, UI, or another LLM.
+
+### Real LLM integration
+
+M9 has been verified with a real Ollama model against a real FalkorDB instance.
+
+The model proposes only the claim:
+
+```text
+subject
+relationship
+object
+```
+
+The deterministic M9 validator independently determines the evidentiary status.
+
+For the real integration test, the model proposed:
+
+```text
+commit-001 -[CHANGED]-> dependency-gateway-sdk
+```
+
+M9 independently classified the claim as:
+
+```text
+OBSERVED
+```
+
+A controlled unsupported relationship was classified as:
+
+```text
+UNKNOWN
+```
+
+and surfaced as:
+
+```text
+Insufficient evidence.
+```
+
+This verifies the M9 authority boundary:
+
+> The LLM proposes a claim. Continuum determines whether the claim is supported.
+
+### Run the deterministic M9 gate
+
+```powershell
+uv run python scripts/m9_check.py --mode deterministic
+```
+
+### Run the real FalkorDB M9 gate
+
+```powershell
+uv run python scripts/m9_check.py --mode falkordb
+```
+
+### Run the real Ollama + FalkorDB M9 gate
+
+```powershell
+uv run python scripts/m9_check.py --mode ollama --model qwen3:8b
+```
+
+### Run the M9 unit tests
+
+```powershell
+uv run pytest tests/test_m9_evidence_validator_unit.py -q
+```
+
+### Run the full test suite
+
+```powershell
+uv run pytest
+```
+
+### Run lint
+
+```powershell
+uv run ruff check .
+```

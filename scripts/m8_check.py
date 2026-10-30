@@ -128,7 +128,13 @@ def run_ollama(model: str, max_steps: int) -> int:
             raise AssertionError(
                 "Ollama produced no executable investigation tool call"
             )
-    except (AssertionError, OSError, RuntimeError, TypeError, ValueError) as exc:  # real integration errors must be visible, never hidden
+    except (
+        AssertionError,
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ) as exc:  # real integration errors must be visible, never hidden
         failure(str(exc))
         return 1
 

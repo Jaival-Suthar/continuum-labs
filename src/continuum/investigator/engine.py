@@ -21,6 +21,7 @@ from continuum.graph.provenance import relationship_with_evidence
 from continuum.graph.traversal import GraphTraversal
 from continuum.temporal import TemporalQueries
 from continuum.temporal.model import TemporalCheck
+from continuum.validation import Claim, ClaimValidation, EvidenceValidator
 
 
 @dataclass(frozen=True)
@@ -396,6 +397,17 @@ class Investigator:
         )
 
         return ranked
+
+    def validate_claim(self, claim: Claim) -> ClaimValidation:
+        """Validate one proposed relationship through the deterministic M9 boundary.
+
+        This method is intentionally separate from the M8 investigation
+        operations. An LLM may propose a ``Claim``; only ``EvidenceValidator``
+        may classify its evidentiary status.
+        """
+        return EvidenceValidator(self.graph, self.find_conflicting_evidence).validate(
+            claim
+        )
 
     def start_investigation(
         self,
