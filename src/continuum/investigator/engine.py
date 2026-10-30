@@ -410,6 +410,17 @@ class Investigator:
         """
         return HypothesisEvaluator(self).evaluate_state(state)
 
+    def build_report(self, state: InvestigationState):
+        """Build the M11 report from already-computed investigation state.
+
+        This is a presentation boundary only. The report builder performs no
+        graph access, validation, temporal reasoning, hypothesis scoring, or
+        investigation planning.
+        """
+        from continuum.report import GroundedReportBuilder
+
+        return GroundedReportBuilder().from_state(state)
+
     def validate_claim(self, claim: Claim) -> ClaimValidation:
         """Validate one proposed relationship through the deterministic M9 boundary.
 

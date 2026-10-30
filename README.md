@@ -700,3 +700,230 @@ Run all non-integration tests:
 ```bash
 uv run pytest -m "not integration"
 ```
+
+## M11 — Grounded Investigation Report
+
+M11 adds the deterministic presentation layer for Continuum investigations.
+
+It converts the already-grounded investigation state produced by M6–M10 into a human-readable investigation report without performing any new investigation, graph queries, evidence validation, temporal reasoning, or hypothesis scoring.
+
+### What M11 Does
+
+M11 takes the results of the investigation pipeline:
+
+```text
+Graph
+  ↓
+Investigation
+  ↓
+Evidence Validation
+  ↓
+Hypothesis Competition
+  ↓
+Grounded Investigation State
+  ↓
+M11 Report
+```
+
+The report preserves the evidence trail rather than generating a new explanation.
+
+It contains:
+
+- **Question**
+- **Most Supported Explanation**
+- **Evidence Path**
+- **Observed Facts**
+- **Derived Relationships**
+- **Supported Inferences**
+- **Contradictions**
+- **Unknown / Evidence Gaps**
+- **Sources**
+- **Investigation Trace**
+
+### Grounding Boundary
+
+M11 is intentionally deterministic.
+
+```text
+M10
+  │
+  ├── winning hypothesis
+  ├── candidate paths
+  ├── evidence
+  ├── contradictions
+  └── evidence gaps
+          │
+          ▼
+        M11
+          │
+          ▼
+    Human-readable report
+```
+
+M11 does **not**:
+
+- query FalkorDB
+- discover new paths
+- validate evidence
+- perform temporal reasoning
+- score hypotheses
+- invent evidence
+- invent confidence percentages
+- introduce autonomous investigation
+- use an LLM to determine the winning explanation
+
+The M10 hypothesis competition result is treated as an input boundary. M11 explains and presents that result without recomputing it.
+
+### Report Example
+
+```text
+QUESTION
+Why did incident-001 happen?
+
+MOST SUPPORTED EXPLANATION
+H1 best supported
+Dependency change
+
+EVIDENCE PATH
+[path-0abd90eba1ae3d1e5b464452] VALID: path temporally consistent
+commit-001
+  ↓ CHANGED
+dependency-gateway-sdk
+  ↓ DEPENDS_ON
+service-payments
+  ↓ AFFECTS
+deployment-001
+  ↓ AFFECTS
+metric-001
+  ↓ RESULTED_IN
+incident-001
+
+OBSERVED FACTS
+- Observed evidence source-commit-001...
+- Observed evidence source-dependency-001...
+
+DERIVED RELATIONSHIPS
+- commit-001 -[CHANGED]-> dependency-gateway-sdk
+- dependency-gateway-sdk -[DEPENDS_ON]-> service-payments
+
+SUPPORTED INFERENCES
+None recorded.
+
+CONTRADICTIONS
+- Path config-001 -> metric-001 rejected...
+
+UNKNOWN / EVIDENCE GAPS
+- infra-event-001 -[AFFECTS]-> metric-001: supporting evidence missing
+
+SOURCES
+- source-commit-001 — git commit record...
+- source-dependency-001 — dependency relationship record...
+
+INVESTIGATION TRACE
+- step_1=candidate_paths_discovered
+- step_2=compare_hypotheses
+- hypothesis_competition=WINNER
+```
+
+### Architecture
+
+M11 introduces a dedicated report model and deterministic builder/formatter:
+
+```text
+src/continuum/report/
+├── __init__.py
+├── model.py
+├── builder.py
+└── formatter.py
+```
+
+The main components are:
+
+```text
+InvestigationState
+       │
+       ▼
+GroundedReportBuilder
+       │
+       ▼
+InvestigationReport
+       │
+       ▼
+ReportFormatter
+       │
+       ▼
+Human-readable text
+```
+
+`GroundedReportBuilder` consumes existing investigation results.
+
+`InvestigationReport` provides the structured report representation.
+
+`ReportFormatter` provides deterministic terminal-friendly output.
+
+### Uncertainty Preservation
+
+M11 does not collapse uncertainty into a single confidence value.
+
+Contradictions and evidence gaps remain explicit:
+
+```text
+Supported
+    │
+    ├── Observed evidence
+    ├── Derived relationships
+    └── Supported inferences
+
+Uncertain
+    │
+    ├── Contradictions
+    └── Evidence gaps
+```
+
+If multiple hypotheses remain plausible, M11 preserves the ambiguity instead of selecting one arbitrarily.
+
+If evidence is insufficient, the report explicitly states that the evidence is insufficient.
+
+### Verification
+
+M11 has both unit-level and real FalkorDB verification.
+
+Unit tests cover:
+
+- winning hypothesis reports
+- ambiguous hypotheses
+- insufficient evidence
+- missing M10 boundaries
+- grounded result construction
+- required report sections
+- evidence/path/source references
+
+The real integration gate is:
+
+```powershell
+uv run python scripts/m11_check.py
+```
+
+The complete verification suite:
+
+```powershell
+uv run ruff check .
+uv run pytest tests/test_m11_grounded_report_unit.py -q
+uv run python scripts/m11_check.py
+uv run pytest -m "not integration" -q
+uv run pytest -q
+```
+
+Expected result:
+
+```text
+6 passed
+M11 STATUS: PASS
+86 passed, 18 deselected
+103 passed, 1 skipped
+All checks passed!
+```
+
+### M11 Completion
+
+M11 is complete when an investigation can be rendered as a grounded report containing the question, supported explanation, evidence path, observed facts, derived relationships, supported inferences, contradictions, evidence gaps, sources, and investigation trace — while preserving the M6–M10 evidence trail and performing no new investigation.
