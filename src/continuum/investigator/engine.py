@@ -9,8 +9,10 @@ from continuum.core.models import (
     Evidence,
     EvidenceStatus,
     GraphNode,
+    Hypothesis,
     InvestigationPath,
     InvestigationResult,
+    InvestigationState,
     PathRanking,
 )
 from continuum.core.world import World
@@ -394,6 +396,276 @@ class Investigator:
         )
 
         return ranked
+
+    def start_investigation(
+        self,
+        question: str,
+        *,
+        target_id: str | None = None,
+        hypotheses: Iterable[Hypothesis] = (),
+    ) -> InvestigationState:
+        """Create an empty cumulative M7 state.
+
+        No graph query is executed here. The state is the durable context for
+        subsequent explicit investigation operations.
+        """
+        state = InvestigationState(question=question, target=target_id)
+        for hypothesis in hypotheses:
+            state.add_hypothesis(hypothesis)
+        return state
+
+    # ``begin_investigation`` reads naturally in callers and is intentionally
+    # an alias rather than a second implementation.
+    begin_investigation = start_investigation
+
+    def continue_investigation(
+        self,
+        state: InvestigationState,
+        operation: str,
+        **kwargs: Any,
+    ) -> InvestigationState:
+        """Execute one deterministic M6 operation against existing M7 state.
+
+        The operation result is merged into ``state`` by the single M7 state
+        update mechanism. No LLM, planning loop, or domain-specific branch is
+        involved; choosing the operation remains an explicit caller concern
+        until M8.
+        """
+        if not isinstance(state, InvestigationState):
+            raise TypeError("state must be an InvestigationState")
+        if not operation:
+            raise ValueError("operation must not be empty")
+
+        normalized = operation.strip().lower()
+        allowed = {
+            "find_outcome",
+            "find_related_entities",
+            "expand_neighborhood",
+            "find_paths",
+            "trace_backward",
+            "trace_forward",
+            "find_preceding_changes",
+            "find_downstream_impact",
+            "find_supporting_evidence",
+            "find_conflicting_evidence",
+            "check_temporal_consistency",
+            "rank_paths",
+        }
+        if normalized not in allowed:
+            raise ValueError(
+                f"unsupported investigation operation: {operation}; "
+                f"allowed={', '.join(sorted(allowed))}"
+            )
+
+        inputs = dict(kwargs)
+        result = self._execute_state_operation(state, normalized, kwargs)
+        state.apply_result(normalized, result, input=inputs)
+        return state
+
+    # Explicit name for the milestone's core concept.
+    investigate_step = continue_investigation
+
+    def _execute_state_operation(
+        self,
+        state: InvestigationState,
+        operation: str,
+        kwargs: dict[str, Any],
+    ) -> InvestigationResult:
+        """Adapt one M6 primitive to the M7 result/state boundary."""
+        if operation == "find_outcome":
+            target_or_question = str(kwargs.pop("target_or_question", state.question))
+            target_id = kwargs.pop("target_id", None)
+            outcome = self.find_outcome(target_or_question, target_id=target_id)
+            return InvestigationResult(
+                question=state.question,
+                target=outcome.id,
+                discovered_nodes=[outcome.id],
+                trace=[f"outcome_located={outcome.id}"],
+            )
+
+        if operation in {"find_related_entities", "expand_neighborhood"}:
+            node_id = self._state_node_id(state, kwargs.pop("node_id", None))
+            if operation == "find_related_entities":
+                nodes = self.find_related_entities(node_id, **kwargs)
+            else:
+                nodes = self.expand_neighborhood(node_id, **kwargs)
+            return InvestigationResult(
+                question=state.question,
+                target=state.target or node_id,
+                discovered_nodes=[node_id, *(node.id for node in nodes)],
+                trace=[f"{operation}={len(nodes)}"],
+            )
+
+        if operation in {
+            "find_paths",
+            "trace_backward",
+            "trace_forward",
+            "find_downstream_impact",
+        }:
+            if operation == "find_paths":
+                start_id = str(kwargs.pop("start_id"))
+                end_id = str(kwargs.pop("end_id"))
+                paths = self.find_paths(start_id, end_id, **kwargs)
+            elif operation == "trace_backward":
+                node_id = self._state_node_id(state, kwargs.pop("node_id", None))
+                paths = self.trace_backward(node_id, **kwargs)
+            elif operation == "trace_forward":
+                node_id = self._state_node_id(state, kwargs.pop("node_id", None))
+                paths = self.trace_forward(node_id, **kwargs)
+            else:
+                change_id = self._state_node_id(state, kwargs.pop("change_id", None))
+                paths = self.find_downstream_impact(change_id, **kwargs)
+            return self._result_from_paths(state, paths, operation)
+
+        if operation == "find_preceding_changes":
+            outcome_id = self._state_node_id(state, kwargs.pop("outcome_id", None))
+            nodes = self.find_preceding_changes(outcome_id, **kwargs)
+            return InvestigationResult(
+                question=state.question,
+                target=state.target or outcome_id,
+                discovered_nodes=[outcome_id, *(node.id for node in nodes)],
+                trace=[f"preceding_changes={len(nodes)}"],
+            )
+
+        if operation == "find_supporting_evidence":
+            path = self._state_path(
+                state,
+                kwargs.pop("path", None),
+                kwargs.pop("path_index", None),
+            )
+            evidence = self.find_supporting_evidence(path)
+            return self._result_from_paths(
+                state,
+                [path],
+                operation,
+                evidence=evidence,
+            )
+
+        if operation == "find_conflicting_evidence":
+            paths = kwargs.pop("paths", None)
+            selected = list(paths) if paths is not None else list(state.candidate_paths)
+            conflicts = self.find_conflicting_evidence(selected)
+            return InvestigationResult(
+                question=state.question,
+                target=state.target,
+                candidate_paths=selected,
+                contradictions=conflicts,
+                trace=[f"conflicting_evidence={len(conflicts)}"],
+            )
+
+        if operation == "check_temporal_consistency":
+            path = self._state_path(
+                state,
+                kwargs.pop("path", None),
+                kwargs.pop("path_index", None),
+            )
+            check = self.check_temporal_consistency(path)
+            detail = f"{' -> '.join(path.node_ids)}: {check.status} ({check.reason})"
+            return InvestigationResult(
+                question=state.question,
+                target=state.target,
+                candidate_paths=[path],
+                temporal_checks=[detail],
+                contradictions=(
+                    [f"Path {' -> '.join(path.node_ids)} rejected: {check.reason}"]
+                    if check.valid is False
+                    else []
+                ),
+                trace=["temporal_validation=complete"],
+            )
+
+        if operation == "rank_paths":
+            paths = kwargs.pop("paths", None)
+            selected = list(paths) if paths is not None else list(state.candidate_paths)
+            ranked = self.rank_paths(selected)
+            return InvestigationResult(
+                question=state.question,
+                target=state.target,
+                candidate_paths=selected,
+                ranked_paths=ranked,
+                trace=[f"ranking=deterministic paths={len(ranked)}"],
+            )
+
+        raise AssertionError(f"unhandled operation: {operation}")
+
+    @staticmethod
+    def _state_node_id(
+        state: InvestigationState,
+        node_id: str | None,
+    ) -> str:
+        resolved = node_id or state.target
+        if not resolved:
+            raise ValueError(
+                "node_id is required when the investigation state has no target"
+            )
+        return resolved
+
+    @staticmethod
+    def _state_path(
+        state: InvestigationState,
+        path: InvestigationPath | None,
+        path_index: int | None,
+    ) -> InvestigationPath:
+        if path is not None:
+            return path
+        if path_index is None:
+            if len(state.candidate_paths) == 1:
+                return state.candidate_paths[0]
+            raise ValueError(
+                "path or path_index is required when state has zero or multiple paths"
+            )
+        if path_index < 0 or path_index >= len(state.candidate_paths):
+            raise IndexError("path_index is outside the current candidate_paths")
+        return state.candidate_paths[path_index]
+
+    @staticmethod
+    def _result_from_paths(
+        state: InvestigationState,
+        paths: Iterable[InvestigationPath],
+        operation: str,
+        *,
+        evidence: Iterable[Evidence] = (),
+    ) -> InvestigationResult:
+        selected = list(paths)
+        discovered_nodes = list(
+            dict.fromkeys(node_id for path in selected for node_id in path.node_ids)
+        )
+        discovered_edges = list(
+            dict.fromkeys(
+                edge_id or f"{source_id}|{relationship}|{target_id}"
+                for path in selected
+                for source_id, target_id, relationship, edge_id in zip(
+                    path.node_ids[:-1],
+                    path.node_ids[1:],
+                    path.relationships,
+                    path.edge_ids,
+                    strict=True,
+                )
+            )
+        )
+        return InvestigationResult(
+            question=state.question,
+            target=state.target,
+            discovered_nodes=discovered_nodes,
+            discovered_edges=discovered_edges,
+            candidate_paths=selected,
+            evidence=list(evidence),
+            temporal_checks=[
+                f"{' -> '.join(path.node_ids)}: "
+                f"{path.temporal_status} ({path.temporal_reason})"
+                for path in selected
+            ],
+            contradictions=state.contradictions
+            if operation == "find_conflicting_evidence"
+            else [],
+            gaps=[
+                f"Path {' -> '.join(path.node_ids)} has "
+                f"{path.missing_evidence_count} missing evidence relationship(s)"
+                for path in selected
+                if path.missing_evidence_count > 0
+            ],
+            trace=[f"{operation}={len(selected)}"],
+        )
 
     def investigate(
         self,

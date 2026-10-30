@@ -207,3 +207,85 @@ The M5 scenario proves:
 
 M5 does not implement causal inference or LLM reasoning. It establishes
 temporal admissibility for M6's deterministic investigation engine.
+
+## M7 — Persistent investigation state
+
+M7 turns the deterministic M6 primitives into a cumulative investigation. The
+state is separate from `InvestigationResult`: an M6 result describes one
+operation, while `InvestigationState` retains the discoveries needed by the
+next operation.
+
+The state contains:
+
+- `question`
+- `target`
+- `hypotheses`
+- `explored_nodes`
+- `explored_edges`
+- `candidate_paths`
+- `evidence`
+- `contradictions`
+- `gaps`
+- `temporal_constraints`
+- `history`
+- `extensions`
+
+M7 adds explicit deterministic continuation through:
+
+```python
+state = investigator.start_investigation(
+    "Why did incident-001 happen?",
+    hypotheses=(
+        Hypothesis("H1", "Dependency change"),
+        Hypothesis("H2", "Configuration change"),
+        Hypothesis("H3", "Infrastructure event"),
+    ),
+)
+
+investigator.continue_investigation(state, "find_outcome")
+investigator.continue_investigation(state, "expand_neighborhood", depth=2)
+investigator.continue_investigation(
+    state,
+    "trace_backward",
+    max_hops=5,
+    limit=25,
+)
+```
+
+Each operation delegates to an existing M6 primitive, then passes its
+`InvestigationResult` through one deterministic state-update mechanism.
+Collections are idempotently merged, while `history` records every operation
+and the state version at which it completed. No LLM, autonomous planning,
+hypothesis competition, reporting, or UI is introduced by M7.
+
+Run the M7 gate against FalkorDB:
+
+```bash
+uv run python scripts/m7_check.py
+```
+
+Run the M7 unit tests:
+
+```bash
+uv run pytest tests/test_m7_investigation_state_unit.py
+```
+
+Run all non-integration tests:
+
+```bash
+uv run pytest -m "not integration"
+```
+
+Run the complete verification suite with FalkorDB running:
+
+```bash
+uv run pytest
+uv run ruff check .
+```
+
+The M7 gate proves that step 2 consumes state produced by step 1, step 3
+consumes the same continuing investigation, and repeating an operation does not
+duplicate explored nodes, explored edges, candidate paths, or evidence.
+
+M8 remains responsible for allowing an LLM to choose which investigation
+operation should run next.

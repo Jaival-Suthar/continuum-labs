@@ -216,6 +216,274 @@ class PathRanking:
     rank_key: tuple[int, int, int, int, int, int]
 
 
+@dataclass(frozen=True)
+class Hypothesis:
+    """Persistent investigative hypothesis state.
+
+    M7 stores hypotheses and their accumulated references; it does not score
+    or select between them. Hypothesis competition remains an M10 concern.
+    """
+
+    id: str
+    description: str
+    candidate_path_ids: tuple[str, ...] = ()
+    evidence_ids: tuple[str, ...] = ()
+    contradictions: tuple[str, ...] = ()
+    gaps: tuple[str, ...] = ()
+    temporal_constraints: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.id:
+            raise ValueError("Hypothesis.id must not be empty")
+        if not self.description:
+            raise ValueError("Hypothesis.description must not be empty")
+        for field_name in (
+            "candidate_path_ids",
+            "evidence_ids",
+            "contradictions",
+            "gaps",
+            "temporal_constraints",
+        ):
+            values = getattr(self, field_name)
+            if len(values) != len(set(values)):
+                raise ValueError(f"Hypothesis.{field_name} must be unique")
+
+
+@dataclass(frozen=True)
+class InvestigationStep:
+    """One deterministic operation performed against an investigation state."""
+
+    operation: str
+    input: dict[str, Any]
+    result: InvestigationResult
+    state_version: int
+    added_nodes: tuple[str, ...] = ()
+    added_edges: tuple[str, ...] = ()
+    added_path_count: int = 0
+    added_evidence_count: int = 0
+    added_contradiction_count: int = 0
+    added_gap_count: int = 0
+    added_temporal_constraint_count: int = 0
+
+    def __post_init__(self) -> None:
+        if not self.operation:
+            raise ValueError("InvestigationStep.operation must not be empty")
+        if self.state_version < 1:
+            raise ValueError("InvestigationStep.state_version must be >= 1")
+        for field_name in (
+            "added_path_count",
+            "added_evidence_count",
+            "added_contradiction_count",
+            "added_gap_count",
+            "added_temporal_constraint_count",
+        ):
+            if getattr(self, field_name) < 0:
+                raise ValueError(f"{field_name} must be >= 0")
+
+
+@dataclass
+class InvestigationState:
+    """Cumulative state for a multi-step deterministic investigation.
+
+    The state is deliberately separate from ``InvestigationResult``. M6
+    describes what one deterministic operation discovered; M7 retains those
+    discoveries so later operations consume the same investigation rather
+    than starting from an empty result.
+    """
+
+    question: str
+    target: str | None = None
+    hypotheses: list[Hypothesis] = field(default_factory=list)
+    explored_nodes: set[str] = field(default_factory=set)
+    explored_edges: set[str] = field(default_factory=set)
+    candidate_paths: list[InvestigationPath] = field(default_factory=list)
+    evidence: list[Evidence] = field(default_factory=list)
+    contradictions: list[str] = field(default_factory=list)
+    gaps: list[str] = field(default_factory=list)
+    temporal_constraints: list[str] = field(default_factory=list)
+    history: list[InvestigationStep] = field(default_factory=list)
+    extensions: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not self.question.strip():
+            raise ValueError("InvestigationState.question must not be empty")
+        self._deduplicate_collections()
+
+    @property
+    def version(self) -> int:
+        """Number of completed investigation operations."""
+        return len(self.history)
+
+    @property
+    def steps(self) -> list[InvestigationStep]:
+        """Compatibility/readability alias for the investigation history."""
+        return self.history
+
+    def add_hypothesis(self, hypothesis: Hypothesis) -> None:
+        """Add or merge one hypothesis by stable id."""
+        for index, existing in enumerate(self.hypotheses):
+            if existing.id != hypothesis.id:
+                continue
+            self.hypotheses[index] = Hypothesis(
+                id=existing.id,
+                description=existing.description,
+                candidate_path_ids=_unique(
+                    existing.candidate_path_ids + hypothesis.candidate_path_ids
+                ),
+                evidence_ids=_unique(existing.evidence_ids + hypothesis.evidence_ids),
+                contradictions=_unique(
+                    existing.contradictions + hypothesis.contradictions
+                ),
+                gaps=_unique(existing.gaps + hypothesis.gaps),
+                temporal_constraints=_unique(
+                    existing.temporal_constraints + hypothesis.temporal_constraints
+                ),
+            )
+            return
+        self.hypotheses.append(hypothesis)
+
+    def apply_result(
+        self,
+        operation: str,
+        result: InvestigationResult,
+        *,
+        input: dict[str, Any] | None = None,
+    ) -> InvestigationStep:
+        """Merge one M6 result into this state and record the operation.
+
+        All merges are deterministic and idempotent. Re-applying the same
+        result cannot duplicate nodes, edges, paths, evidence, contradictions,
+        gaps, or temporal constraints. History still records the operation
+        because two executions are two real investigation steps.
+        """
+        if result.question != self.question:
+            raise ValueError(
+                "InvestigationResult.question does not match "
+                "InvestigationState.question"
+            )
+        before_nodes = set(self.explored_nodes)
+        before_edges = set(self.explored_edges)
+        before_paths = {self._path_key(path) for path in self.candidate_paths}
+        before_evidence = {item.id for item in self.evidence}
+        before_contradictions = set(self.contradictions)
+        before_gaps = set(self.gaps)
+        before_constraints = set(self.temporal_constraints)
+
+        if result.target is not None:
+            self.target = result.target
+
+        self.explored_nodes.update(result.discovered_nodes)
+        self.explored_edges.update(result.discovered_edges)
+
+        for path in result.candidate_paths:
+            self._merge_path(path)
+
+        for item in result.evidence:
+            self._merge_evidence(item)
+
+        self.contradictions = _unique_list(self.contradictions + result.contradictions)
+        self.gaps = _unique_list(self.gaps + result.gaps)
+        self.temporal_constraints = _unique_list(
+            self.temporal_constraints + result.temporal_checks
+        )
+
+        self._deduplicate_collections()
+
+        added_nodes = tuple(sorted(self.explored_nodes - before_nodes))
+        added_edges = tuple(sorted(self.explored_edges - before_edges))
+        added_paths = len(
+            {self._path_key(path) for path in self.candidate_paths} - before_paths
+        )
+        added_evidence = len({item.id for item in self.evidence} - before_evidence)
+        added_contradictions = len(set(self.contradictions) - before_contradictions)
+        added_gaps = len(set(self.gaps) - before_gaps)
+        added_constraints = len(set(self.temporal_constraints) - before_constraints)
+
+        step = InvestigationStep(
+            operation=operation,
+            input=dict(input or {}),
+            result=result,
+            state_version=self.version + 1,
+            added_nodes=added_nodes,
+            added_edges=added_edges,
+            added_path_count=added_paths,
+            added_evidence_count=added_evidence,
+            added_contradiction_count=added_contradictions,
+            added_gap_count=added_gaps,
+            added_temporal_constraint_count=added_constraints,
+        )
+        self.history.append(step)
+        return step
+
+    def merge_result(
+        self,
+        result: InvestigationResult,
+        *,
+        operation: str = "investigate",
+        input: dict[str, Any] | None = None,
+    ) -> InvestigationStep:
+        """Explicit alias for callers that think in terms of result merging."""
+        return self.apply_result(operation, result, input=input)
+
+    def _merge_path(self, path: InvestigationPath) -> None:
+        key = self._path_key(path)
+        if not any(
+            self._path_key(existing) == key for existing in self.candidate_paths
+        ):
+            self.candidate_paths.append(path)
+
+        self.explored_nodes.update(path.node_ids)
+        for source_id, target_id, relationship, edge_id in zip(
+            path.node_ids[:-1],
+            path.node_ids[1:],
+            path.relationships,
+            path.edge_ids,
+            strict=True,
+        ):
+            self.explored_edges.add(
+                edge_id or f"{source_id}|{relationship}|{target_id}"
+            )
+
+    def _merge_evidence(self, evidence: Evidence) -> None:
+        if not any(existing.id == evidence.id for existing in self.evidence):
+            self.evidence.append(evidence)
+
+    @staticmethod
+    def _path_key(path: InvestigationPath) -> tuple[Any, ...]:
+        return (path.node_ids, path.relationships, path.edge_ids)
+
+    def _deduplicate_collections(self) -> None:
+        self.hypotheses = _unique_by_id(self.hypotheses)
+        unique_paths: dict[tuple[Any, ...], InvestigationPath] = {}
+        for path in self.candidate_paths:
+            unique_paths.setdefault(self._path_key(path), path)
+        self.candidate_paths = list(unique_paths.values())
+        self.evidence = _unique_by_id(self.evidence)
+        self.contradictions = _unique_list(self.contradictions)
+        self.gaps = _unique_list(self.gaps)
+        self.temporal_constraints = _unique_list(self.temporal_constraints)
+
+
+def _unique(values: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(values))
+
+
+def _unique_list(values: list[str]) -> list[str]:
+    return list(dict.fromkeys(values))
+
+
+def _unique_by_id(values: list[Any]) -> list[Any]:
+    result: list[Any] = []
+    seen: set[str] = set()
+    for value in values:
+        identifier = getattr(value, "id", None)
+        if identifier is None or identifier in seen:
+            continue
+        seen.add(identifier)
+        result.append(value)
+    return result
+
+
 @dataclass
 class InvestigationResult:
     """Complete deterministic investigation output before any LLM synthesis."""
@@ -230,6 +498,8 @@ class InvestigationResult:
     ranked_paths: list[PathRanking] = field(default_factory=list)
     trace: list[str] = field(default_factory=list)
     verdict: str | None = None
+    discovered_nodes: list[str] = field(default_factory=list)
+    discovered_edges: list[str] = field(default_factory=list)
 
     @property
     def paths(self) -> list[list[str]]:
