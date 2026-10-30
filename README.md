@@ -1046,3 +1046,24 @@ uv run ruff check .
 
 The real M13 gate requires a reachable FalkorDB instance because Continuum's
 side of the experiment must perform actual graph operations.
+
+
+## M14 — Failure Suite
+
+M14 verifies that Continuum can correctly refuse unsupported conclusions. The suite executes four independently authored failure cases against the real FalkorDB-backed investigation stack:
+
+- missing evidence → `Insufficient evidence.`
+- multiple plausible paths → `Multiple explanations remain plausible.`
+- temporal contradiction → `Path rejected.`
+- misleading document → `Unsupported relationship rejected.`
+
+The fixture owns the expected result; Continuum never receives the expected answer during investigation.
+
+Run the real gate after FalkorDB is available:
+
+```powershell
+docker compose up -d
+uv run python scripts/m14_check.py
+```
+
+Results are persisted under `artifacts/m14/`. See `M14_FAILURE_SUITE.md` for the implementation contract and verification commands.

@@ -86,6 +86,7 @@ class Hypothesis:
         return (
             self.support_count > 0
             and self.contradiction_count == 0
+            and self.missing_evidence_count == 0
             and self.valid_path_count > 0
         )
 
