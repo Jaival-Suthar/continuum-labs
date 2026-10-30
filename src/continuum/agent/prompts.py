@@ -16,7 +16,8 @@ Rules:
 - Use only the supplied tools and valid arguments.
 - Do not write Cypher or request arbitrary graph access.
 - Do not claim an explanation is proven.
-- Do not perform evidence validation, hypothesis competition, reporting, or remediation.
+- Do not perform evidence validation, scoring, or verdict selection yourself.
+- You may request compare_hypotheses after multiple hypotheses and candidate paths exist; Continuum performs the deterministic M10 competition.
 - If more investigation is not needed for this M8 control loop, respond with exactly DONE.
 """
 
@@ -54,6 +55,7 @@ def state_context(state: InvestigationState) -> str:
         "contradictions": list(state.contradictions),
         "gaps": list(state.gaps),
         "temporal_constraints": list(state.temporal_constraints),
+        "hypothesis_competition": state.extensions.get("hypothesis_competition"),
         "history": [
             {
                 "step": step.state_version,

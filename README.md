@@ -266,6 +266,7 @@ Commands:
 uv run python scripts/m6_check.py
 uv run pytest -q
 uv run ruff check .
+```
 
 ## M7 — Persistent investigation state
 
@@ -399,9 +400,10 @@ The LLM can select only the following investigation operations:
 
 Every executable graph operation crosses the existing M6/M7 boundary.
 
-`compare_hypotheses` only inspects hypotheses already stored in M7. It does
-not score, rank, validate, or select a winning hypothesis. Hypothesis
-competition remains a later milestone.
+`compare_hypotheses` consumes hypotheses already stored in M7 and crosses the
+M10 deterministic competition boundary. It does not accept scores or verdicts
+from the LLM; M10 validates candidate-path relationships through M9 and performs
+the ranking itself.
 
 ### LLM providers
 
@@ -643,4 +645,58 @@ uv run pytest
 
 ```powershell
 uv run ruff check .
+```
+
+## M10 — Hypothesis competition
+
+M10 prevents premature commitment to the first plausible explanation. It
+compares the hypotheses already present in `InvestigationState` using actual M6
+candidate paths and the existing M9 deterministic claim validator.
+
+Each evaluated hypothesis exposes:
+
+- supporting evidence
+- contradictions
+- missing evidence
+- temporal validity
+- candidate paths
+- ordinal path quality
+- deterministic score
+
+The score is explicitly:
+
+```text
+score = support + temporal + path_quality - contradiction - missing_evidence
+```
+
+It is an ordinal ranking signal, not a probability or confidence percentage.
+
+M10 has three outcomes:
+
+```text
+H1 best supported
+H1, H2 remain plausible
+Insufficient evidence
+```
+
+The M8 `compare_hypotheses` tool now crosses the M10 deterministic boundary.
+The LLM may request competition, but M10 computes all evidence signals and the
+verdict independently.
+
+Run the M10 gate against the real seeded software world:
+
+```bash
+uv run python scripts/m10_check.py
+```
+
+Run M10 unit tests:
+
+```bash
+uv run pytest tests/test_m10_hypothesis_competition_unit.py
+```
+
+Run all non-integration tests:
+
+```bash
+uv run pytest -m "not integration"
 ```

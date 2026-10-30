@@ -179,6 +179,10 @@ class AgenticInvestigator:
                 "contradictions": result.contradictions,
                 "gaps": result.gaps,
                 "temporal_checks": result.temporal_checks,
+                "verdict": result.verdict,
+                "hypothesis_competition": state.extensions.get(
+                    "hypothesis_competition"
+                ),
                 "trace": result.trace,
             }
         )

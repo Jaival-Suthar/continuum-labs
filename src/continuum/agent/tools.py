@@ -239,11 +239,11 @@ class CheckTemporalConsistencyTool(M8Tool):
 
 
 class CompareHypothesesTool(M8Tool):
-    """Expose M7 hypothesis state without performing M10 competition."""
+    """Run the deterministic M10 competition over hypotheses already in state."""
 
     spec = ToolSpec(
         "compare_hypotheses",
-        "Inspect the currently stored hypotheses side-by-side. This operation does not rank, score, validate, or select a winning hypothesis.",
+        "Evaluate every stored hypothesis with graph paths and M9 validation, then return the deterministic competition result. The LLM never supplies scores or a verdict.",
         {},
     )
 
@@ -254,10 +254,26 @@ class CompareHypothesesTool(M8Tool):
         arguments: dict[str, Any],
     ) -> InvestigationState:
         self.spec.validate(arguments)
+        competition = investigator.compete_hypotheses(state)
+        state.extensions["hypothesis_competition"] = competition.as_dict()
         result = InvestigationResult(
             question=state.question,
             target=state.target,
-            trace=[f"hypotheses_inspected={len(state.hypotheses)}"],
+            contradictions=[
+                contradiction
+                for hypothesis in competition.hypotheses
+                for contradiction in hypothesis.contradictions
+            ],
+            gaps=[
+                gap
+                for hypothesis in competition.hypotheses
+                for gap in hypothesis.missing_evidence
+            ],
+            verdict=competition.verdict,
+            trace=[
+                f"hypothesis_competition={competition.outcome}",
+                f"hypothesis_count={len(competition.hypotheses)}",
+            ],
         )
         state.apply_result("compare_hypotheses", result, input={})
         return state

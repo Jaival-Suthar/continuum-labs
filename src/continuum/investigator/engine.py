@@ -19,6 +19,7 @@ from continuum.core.world import World
 from continuum.graph.client import GraphClient
 from continuum.graph.provenance import relationship_with_evidence
 from continuum.graph.traversal import GraphTraversal
+from continuum.hypothesis import HypothesisCompetitionResult, HypothesisEvaluator
 from continuum.temporal import TemporalQueries
 from continuum.temporal.model import TemporalCheck
 from continuum.validation import Claim, ClaimValidation, EvidenceValidator
@@ -397,6 +398,17 @@ class Investigator:
         )
 
         return ranked
+
+    def compete_hypotheses(
+        self, state: InvestigationState
+    ) -> HypothesisCompetitionResult:
+        """Evaluate and rank M7 hypotheses through M6 paths and the M9 boundary.
+
+        The returned competition result is deterministic. The LLM may request
+        this operation through M8, but it cannot assign scores or choose the
+        winner.
+        """
+        return HypothesisEvaluator(self).evaluate_state(state)
 
     def validate_claim(self, claim: Claim) -> ClaimValidation:
         """Validate one proposed relationship through the deterministic M9 boundary.
