@@ -83,7 +83,9 @@ def run() -> int:
     header("M16", "Cross-domain investigation gate")
 
     try:
-        graph = GraphClient(GraphConfig(host=args.host, port=args.port, graph_name=args.graph))
+        graph = GraphClient(
+            GraphConfig(host=args.host, port=args.port, graph_name=args.graph)
+        )
         graph.ping()
 
         gate = run_cross_domain_gate(
@@ -110,10 +112,12 @@ def run() -> int:
 
         args.output.mkdir(parents=True, exist_ok=True)
         (args.output / "software_run.json").write_text(
-            json.dumps(gate.as_dict()["software"], indent=2, sort_keys=True), encoding="utf-8"
+            json.dumps(gate.as_dict()["software"], indent=2, sort_keys=True),
+            encoding="utf-8",
         )
         (args.output / "supply_chain_run.json").write_text(
-            json.dumps(gate.as_dict()["supply_chain"], indent=2, sort_keys=True), encoding="utf-8"
+            json.dumps(gate.as_dict()["supply_chain"], indent=2, sort_keys=True),
+            encoding="utf-8",
         )
         (args.output / "cross_domain_summary.json").write_text(
             json.dumps(gate.as_dict(), indent=2, sort_keys=True), encoding="utf-8"
@@ -128,14 +132,32 @@ def run() -> int:
 
         checks(
             [
-                CheckResult("Software investigation", "PASS · target, path, evidence and temporal validation"),
-                CheckResult("Supply-chain investigation", "PASS · target, path, evidence and temporal validation"),
-                CheckResult("Shared Investigator", "PASS · one Investigator implementation and instance"),
-                CheckResult("Shared graph operations", "PASS · FalkorDB traversal/temporal layers are shared"),
-                CheckResult("Shared state model", "PASS · InvestigationState is shared"),
-                CheckResult("Shared hypothesis system", "PASS · HypothesisEvaluator is shared"),
+                CheckResult(
+                    "Software investigation",
+                    "PASS · target, path, evidence and temporal validation",
+                ),
+                CheckResult(
+                    "Supply-chain investigation",
+                    "PASS · target, path, evidence and temporal validation",
+                ),
+                CheckResult(
+                    "Shared Investigator",
+                    "PASS · one Investigator implementation and instance",
+                ),
+                CheckResult(
+                    "Shared graph operations",
+                    "PASS · FalkorDB traversal/temporal layers are shared",
+                ),
+                CheckResult(
+                    "Shared state model", "PASS · InvestigationState is shared"
+                ),
+                CheckResult(
+                    "Shared hypothesis system", "PASS · HypothesisEvaluator is shared"
+                ),
                 CheckResult("Shared validation", "PASS · EvidenceValidator is shared"),
-                CheckResult("Shared reporting", "PASS · GroundedReportBuilder is shared"),
+                CheckResult(
+                    "Shared reporting", "PASS · GroundedReportBuilder is shared"
+                ),
                 CheckResult("No domain-specific Investigator branches", "PASS"),
             ]
         )

@@ -56,7 +56,10 @@ class CrossDomainGateResult:
 
     @property
     def passed(self) -> bool:
-        return all(self.shared_implementations.values()) and self.no_domain_specific_investigator_branches
+        return (
+            all(self.shared_implementations.values())
+            and self.no_domain_specific_investigator_branches
+        )
 
     def as_dict(self) -> dict[str, Any]:
         def domain_dict(item: DomainGateResult) -> dict[str, Any]:
@@ -68,9 +71,13 @@ class CrossDomainGateResult:
                 "primary_hops": item.primary_hops,
                 "primary_evidence_count": item.primary_evidence_count,
                 "primary_temporally_valid": item.primary_temporally_valid,
-                "alternative_path": list(item.alternative_path) if item.alternative_path else None,
+                "alternative_path": list(item.alternative_path)
+                if item.alternative_path
+                else None,
                 "alternative_temporally_valid": item.alternative_temporally_valid,
-                "conflict_path": list(item.conflict_path) if item.conflict_path else None,
+                "conflict_path": list(item.conflict_path)
+                if item.conflict_path
+                else None,
                 "conflict_temporally_valid": item.conflict_temporally_valid,
                 "hypothesis": item.hypothesis.as_dict(),
                 "report": item.report.as_dict(),
@@ -109,10 +116,16 @@ def _run_hypothesis_workflow(
         InvestigationResult(
             question=question,
             target=target,
-            candidate_paths=[primary, *([alternative] if alternative is not None else [])],
+            candidate_paths=[
+                primary,
+                *([alternative] if alternative is not None else []),
+            ],
             evidence=[
                 evidence
-                for path in (primary, *([alternative] if alternative is not None else []))
+                for path in (
+                    primary,
+                    *([alternative] if alternative is not None else []),
+                )
                 for evidence in path.evidence
             ],
         ),
@@ -161,7 +174,9 @@ def _run_domain(
     )
 
     primary = _find_path(
-        investigator.find_paths(spec.primary_path[0], spec.target_id, max_hops=6, limit=25),
+        investigator.find_paths(
+            spec.primary_path[0], spec.target_id, max_hops=6, limit=25
+        ),
         spec.primary_path,
     )
     assert primary.temporally_valid is True, (
@@ -213,7 +228,10 @@ def _run_domain(
     )
 
     assert state.target == spec.target_id
-    assert all(isinstance(item, InvestigationResult) for item in (step.result for step in state.history))
+    assert all(
+        isinstance(item, InvestigationResult)
+        for item in (step.result for step in state.history)
+    )
     assert all(
         validation.classification in ClaimClassification.ALL
         for hypothesis in competition.hypotheses
@@ -234,7 +252,9 @@ def _run_domain(
         primary_evidence_count=len(primary.evidence),
         primary_temporally_valid=primary.temporally_valid is True,
         alternative_path=alternative.node_ids if alternative else None,
-        alternative_temporally_valid=(alternative.temporally_valid if alternative else None),
+        alternative_temporally_valid=(
+            alternative.temporally_valid if alternative else None
+        ),
         conflict_path=conflict.node_ids if conflict else None,
         conflict_temporally_valid=(conflict.temporally_valid if conflict else None),
         investigation_trace=tuple(result.trace),
@@ -246,10 +266,10 @@ def _run_domain(
 def shared_implementation_identity() -> dict[str, bool]:
     """Verify that the graph/state/hypothesis/validation/report layers are shared."""
     from continuum.graph.traversal import GraphTraversal
-    from continuum.temporal import TemporalQueries
     from continuum.hypothesis import HypothesisEvaluator
-    from continuum.validation import EvidenceValidator
     from continuum.report import GroundedReportBuilder
+    from continuum.temporal import TemporalQueries
+    from continuum.validation import EvidenceValidator
 
     return {
         "investigator": Investigator.__module__ == "continuum.investigator.engine"
@@ -257,7 +277,8 @@ def shared_implementation_identity() -> dict[str, bool]:
         "graph_operations": GraphTraversal.__module__ == "continuum.graph.traversal"
         and TemporalQueries.__module__ == "continuum.temporal.queries",
         "state_model": InvestigationState.__module__ == "continuum.core.models",
-        "hypothesis_system": HypothesisEvaluator.__module__ == "continuum.hypothesis.evaluator",
+        "hypothesis_system": HypothesisEvaluator.__module__
+        == "continuum.hypothesis.evaluator",
         "validation": EvidenceValidator.__module__ == "continuum.validation.validator",
         "reporting": GroundedReportBuilder.__module__ == "continuum.report.builder",
     }
@@ -266,10 +287,10 @@ def shared_implementation_identity() -> dict[str, bool]:
 def shared_implementation_types() -> dict[str, str]:
     """Return qualified implementation names recorded by the M16 artifact."""
     from continuum.graph.traversal import GraphTraversal
-    from continuum.temporal import TemporalQueries
     from continuum.hypothesis import HypothesisEvaluator
-    from continuum.validation import EvidenceValidator
     from continuum.report import GroundedReportBuilder
+    from continuum.temporal import TemporalQueries
+    from continuum.validation import EvidenceValidator
 
     classes = {
         "investigator": Investigator,
@@ -282,8 +303,7 @@ def shared_implementation_types() -> dict[str, str]:
         "reporting": GroundedReportBuilder,
     }
     return {
-        name: f"{cls.__module__}.{cls.__qualname__}"
-        for name, cls in classes.items()
+        name: f"{cls.__module__}.{cls.__qualname__}" for name, cls in classes.items()
     }
 
 

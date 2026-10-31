@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Continuum · Investigation</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <button id="home" class="brand" aria-label="Back to Continuum home"><span class="brand-mark">C</span><span>CONTINUUM</span></button>
+      <nav>
+        <div class="nav-label">INVESTIGATE</div>
+        <button class="nav-item active">Investigations</button>
+        <div class="nav-label">WORLDS</div>
+        <button class="world-item" data-domain="software">Software</button>
+        <button class="world-item" data-domain="supply-chain">Supply Chain</button>
+      </nav>
+      <div class="sidebar-footer">M17 · Investigation UI</div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="crumbs"><button id="home-crumb" class="crumb-home" aria-label="Back to Continuum home">CONTINUUM</button><span>/</span><span id="domain-crumb">Software</span><span>/</span><span id="target-crumb">Investigation</span></div>
+        <div id="connection" class="connection"><span class="dot"></span><span>Checking FalkorDB…</span></div>
+      </header>
+
+      <section id="empty" class="empty-state">
+        <div class="eyebrow">INVESTIGATION</div>
+        <h1>Investigate your connected world.</h1>
+        <p>Ask a question about what happened, what changed, or how something was affected.</p>
+        <div class="query-card scenario-card">
+          <div class="scenario-label">SUPPORTED INVESTIGATIONS</div>
+          <p class="scenario-intro">Select one of the investigation scenarios currently supported by Continuum.</p>
+          <div class="scenario-list">
+            <button class="scenario" data-example="Why did incident-001 happen?" data-domain="software">
+              <span class="scenario-domain">SOFTWARE</span>
+              <strong>Why did incident-001 happen?</strong>
+            </button>
+            <button class="scenario" data-example="Why was Customer X affected?" data-domain="supply-chain">
+              <span class="scenario-domain">SUPPLY CHAIN</span>
+              <strong>Why was Customer X affected?</strong>
+            </button>
+            <button class="scenario" data-example="What changed before this outcome?" data-domain="software">
+              <span class="scenario-domain">SOFTWARE</span>
+              <strong>What changed before this outcome?</strong>
+            </button>
+          </div>
+          <input id="question" type="hidden">
+          <select id="domain" class="hidden"><option value="software">Software</option><option value="supply-chain">Supply Chain</option></select>
+          <button id="investigate" class="primary" disabled>Choose an investigation</button>
+        </div>
+      </section>
+
+      <section id="workspace" class="workspace hidden">
+        <div class="investigation-head">
+          <div>
+            <div class="eyebrow">INVESTIGATION</div>
+            <h1 id="question-view"></h1>
+            <div class="context"><span id="domain-view"></span><span>·</span><span id="target-view"></span></div>
+          </div>
+          <div id="status-badge" class="status-badge">Investigating</div>
+        </div>
+
+        <div id="error" class="error hidden"></div>
+
+        <section class="verdict-panel">
+          <div>
+            <div class="panel-kicker">VERDICT</div>
+            <h2 id="verdict"></h2>
+            <p id="verdict-detail"></p>
+          </div>
+          <div id="verdict-state" class="verdict-state"></div>
+        </section>
+
+        <section class="graph-panel panel">
+          <div class="panel-header"><div><span class="panel-kicker">INVESTIGATION GRAPH</span><span id="path-count" class="muted"></span></div><div class="graph-tools"><button id="fit">Fit</button><button id="zoom-out">−</button><button id="zoom-in">+</button></div></div>
+          <div id="path-list" class="path-list"></div>
+          <div id="graph" class="graph-canvas" aria-label="Investigation graph"></div>
+          <div class="legend"><span><i class="legend-line"></i> selected path</span><span><i class="legend-dash"></i> alternative</span><span><i class="legend-muted"></i> rejected/unknown</span></div>
+        </section>
+
+        <section class="details-grid">
+          <div class="panel tabs-panel">
+            <div class="tabs"><button class="tab active" data-tab="trace">Trace</button><button class="tab" data-tab="evidence">Evidence</button><button class="tab" data-tab="hypotheses">Hypotheses</button></div>
+            <div id="tab-content"></div>
+          </div>
+          <aside id="inspector" class="panel inspector"><div class="panel-kicker">INSPECTOR</div><h3>Select a graph element</h3><p>Nodes and relationships expose the same identifiers and provenance returned by the investigation API.</p></aside>
+        </section>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

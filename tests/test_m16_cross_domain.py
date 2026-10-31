@@ -9,12 +9,12 @@ from continuum.cross_domain import (
     shared_implementation_identity,
     shared_implementation_types,
 )
+from continuum.graph.traversal import GraphTraversal
 from continuum.hypothesis import HypothesisEvaluator
 from continuum.investigator import Investigator
 from continuum.report import GroundedReportBuilder
-from continuum.validation import EvidenceValidator
-from continuum.graph.traversal import GraphTraversal
 from continuum.temporal import TemporalQueries
+from continuum.validation import EvidenceValidator
 from domains.software.world import SOFTWARE_WORLD
 from domains.supply_chain.world import SUPPLY_CHAIN_WORLD
 
@@ -60,14 +60,29 @@ def test_m16_domain_specs_contain_no_investigator_logic():
         SOFTWARE_WORLD,
         "Why did incident-001 happen?",
         "incident-001",
-        ("commit-001", "dependency-gateway-sdk", "service-payments", "deployment-001", "metric-001", "incident-001"),
+        (
+            "commit-001",
+            "dependency-gateway-sdk",
+            "service-payments",
+            "deployment-001",
+            "metric-001",
+            "incident-001",
+        ),
     )
     supply = DomainGateSpec(
         "supply_chain",
         SUPPLY_CHAIN_WORLD,
         "Why was Customer X affected?",
         "impact-001",
-        ("supplier-001", "component-001", "factory-001", "shipment-001", "warehouse-001", "account-001", "impact-001"),
+        (
+            "supplier-001",
+            "component-001",
+            "factory-001",
+            "shipment-001",
+            "warehouse-001",
+            "account-001",
+            "impact-001",
+        ),
     )
     assert software.world is SOFTWARE_WORLD
     assert supply.world is SUPPLY_CHAIN_WORLD
@@ -81,6 +96,9 @@ def test_m16_artifact_records_qualified_shared_implementations():
     assert types["temporal_operations"] == "continuum.temporal.queries.TemporalQueries"
     assert types["state_model"] == "continuum.core.models.InvestigationState"
     assert types["result_model"] == "continuum.core.models.InvestigationResult"
-    assert types["hypothesis_system"] == "continuum.hypothesis.evaluator.HypothesisEvaluator"
+    assert (
+        types["hypothesis_system"]
+        == "continuum.hypothesis.evaluator.HypothesisEvaluator"
+    )
     assert types["validation"] == "continuum.validation.validator.EvidenceValidator"
     assert types["reporting"] == "continuum.report.builder.GroundedReportBuilder"
