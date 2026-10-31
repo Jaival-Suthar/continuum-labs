@@ -1071,3 +1071,87 @@ Results are persisted under `artifacts/m14/`. See `M14_FAILURE_SUITE.md` for the
 ## M15 — Supply-Chain World
 
 M15 proves domain transfer by loading a supply-chain world through the same universal graph loader and unchanged investigation engine used by the software world. The world models `Supplier → Component → Factory → Shipment → Warehouse → Customer → Impact`, includes competing explanations, independent provenance, a temporal contradiction, and a disconnected distractor. See `M15_SUPPLY_CHAIN_WORLD.md` for the milestone gate and verification commands.
+
+## M16 — Cross-Domain Gate
+
+M16 is the defining V1 architecture gate. It verifies that the same
+investigation machinery works when the world changes from Software to
+Supply-Chain. The gate does not add domain-specific Investigator logic.
+
+The real gate uses one `Investigator` instance and the same FalkorDB graph
+client. It loads the Software world, runs the incident investigation, validates
+its evidence-backed primary path and competing explanations, then resets the
+same graph, loads the Supply-Chain world, and repeats the workflow.
+
+Both executions explicitly exercise the shared:
+
+- graph traversal and temporal query layers,
+- `InvestigationState` / `InvestigationResult`,
+- hypothesis evaluator,
+- evidence validator,
+- grounded report builder.
+
+M16 also rejects known domain-specific Investigator implementations and
+persists only values derived from the real executions.
+
+### Run M16
+
+Start FalkorDB first:
+
+```powershell
+docker compose up -d
+```
+
+Run the cross-domain gate:
+
+```powershell
+uv run python scripts/m16_check.py
+```
+
+Run M16 unit tests:
+
+```powershell
+uv run pytest tests/test_m16_cross_domain.py -q
+```
+
+Run the complete non-integration regression suite:
+
+```powershell
+uv run pytest -m "not integration" -q
+```
+
+Run the V1 regression gates explicitly:
+
+```powershell
+uv run python scripts/m14_check.py
+uv run python scripts/m15_check.py
+uv run python scripts/m16_check.py
+```
+
+Run the complete test suite, including FalkorDB/Ollama integrations:
+
+```powershell
+uv run pytest -q
+```
+
+Run Ruff:
+
+```powershell
+uv run ruff check .
+uv run ruff format --check .
+```
+
+M16 writes the following artifacts after a successful real execution:
+
+```text
+artifacts/m16/
+├── software_run.json
+├── supply_chain_run.json
+└── cross_domain_summary.json
+```
+
+The final summary contains the observed Software and Supply-Chain results and
+boolean shared-layer checks. No confidence values or fabricated benchmark
+metrics are inserted.
+
+See `M16_CROSS_DOMAIN.md` for the milestone contract.
