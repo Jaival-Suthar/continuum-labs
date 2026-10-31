@@ -1067,3 +1067,7 @@ uv run python scripts/m14_check.py
 ```
 
 Results are persisted under `artifacts/m14/`. See `M14_FAILURE_SUITE.md` for the implementation contract and verification commands.
+
+## M15 — Supply-Chain World
+
+M15 proves domain transfer by loading a supply-chain world through the same universal graph loader and unchanged investigation engine used by the software world. The world models `Supplier → Component → Factory → Shipment → Warehouse → Customer → Impact`, includes competing explanations, independent provenance, a temporal contradiction, and a disconnected distractor. See `M15_SUPPLY_CHAIN_WORLD.md` for the milestone gate and verification commands.
